@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLBB TeamFinder - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --tg-theme-bg-color: #17212b;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #708499;
+            --tg-theme-link-color: #5ac8fa;
+            --tg-theme-button-color: #5288c1;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #232e3c;
+            --primary: #3498db;
+            --accent: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            min-height: 100vh;
+            padding: 10px;
+            padding-bottom: 80px;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            min-height: calc(100vh - 20px);
+        }
+
+        .header {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            color: var(--primary);
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-weight: bold;
+            font-size: 20px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .edit-profile-btn {
+            background: rgba(82, 136, 193, 0.2);
+            border: 2px solid var(--tg-theme-button-color);
+            color: var(--tg-theme-text-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .edit-profile-btn:hover {
+            background: var(--tg-theme-button-color);
+            transform: scale(1.1);
+        }
+
+        .main-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .player-stats {
+            background: rgba(35, 46, 60, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .player-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid var(--primary);
+            background: linear-gradient(45deg, var(--primary), #2c3e50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            overflow: hidden;
+        }
+
+        .player-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .player-details {
+            flex: 1;
+        }
+
+        .player-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .player-rank {
+            display: inline-block;
+            background: linear-gradient(to right, #f1c40f, #e67e22);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(26, 42, 108, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .requests-container {
+            margin-top: 30px;
+        }
+
+        .request-card {
+            background: rgba(35, 46, 60, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .request-card:hover {
+            transform: translateX(5px);
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .request-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--accent), #e67e22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            overflow: hidden;
+        }
+
+        .request-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .request-rank {
+            font-size: 12px;
+            color: var(--warning);
+            background: rgba(243, 156, 18, 0.1);
+            padding: 3px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .accept-btn, .decline-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .accept-btn {
+            background: rgba(46, 204, 113, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .accept-btn:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .decline-btn {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .decline-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .bottom-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+        }
+
+        .menu-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--tg-theme-hint-color);
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 5px 10px;
+            flex: 1;
+            max-width: 25%;
+        }
+
+        .menu-item.active {
+            color: var(--tg-theme-link-color);
+        }
+
+        .menu-item i {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .menu-item span {
+            font-size: 12px;
+        }
+
+        .search-btn {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: -30px;
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .search-btn i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .tg-back-button {
+            display: none;
+            position: absolute;
+            left: 15px;
+            top: 15px;
+            color: var(--tg-theme-link-color);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* Экраны */
+        .screen {
+            display: none;
+            padding: 20px;
+            min-height: calc(100vh - 80px);
+        }
+        
+        #main-screen {
+            display: block;
+        }
+        
+        /* Экран поиска */
+        .search-filters {
+            background: rgba(35, 46, 60, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            margin-bottom: 15px;
+        }
+        
+        .filter-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--tg-theme-hint-color);
+        }
+        
+        .filter-select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(26, 42, 108, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--tg-theme-text-color);
+            font-size: 16px;
+        }
+        
+        .search-results {
+            margin-top: 20px;
+        }
+        
+        .search-result-card {
+            background: rgba(35, 46, 60, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .request-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .request-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        
+        /* Экран профиля */
+        .profile-form {
+            background: rgba(35, 46, 60, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--tg-theme-hint-color);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(26, 42, 108, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--tg-theme-text-color);
+            font-size: 16px;
+        }
+        
+        .save-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .save-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .instructions h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            text-align: left;
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        @media (max-width: 480px) {
+            .player-avatar {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .stat-card {
+                padding: 10px;
+            }
+            
+            .stat-value {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Кнопка назад для Telegram -->
+        <div class="tg-back-button" id="backButton">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        
+        <!-- Шапка приложения -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-users"></i></div>
+                <div class="logo-text">MLBB TeamFinder</div>
+            </div>
+            <div class="edit-profile-btn" id="editProfileBtn">
+                <i class="fas fa-user-edit"></i>
+            </div>
+        </div>
+
+        <!-- Основной экран -->
+        <div class="screen" id="main-screen">
+            <!-- Статистика игрока -->
+            <div class="player-stats fade-in">
+                <div class="player-info">
+                    <div class="player-avatar" id="user-avatar">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="player-details">
+                        <div class="player-name" id="user-name">Загрузка...</div>
+                        <div class="player-rank">Мифическая Слава III</div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card fade-in delay-1">
+                        <div class="stat-value">64%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                    <div class="stat-card fade-in delay-2">
+                        <div class="stat-value">1,872</div>
+                        <div class="stat-label">Матчи</div>
+                    </div>
+                    <div class="stat-card fade-in delay-1">
+                        <div class="stat-value">7.8</div>
+                        <div class="stat-label">KDA</div>
+                    </div>
+                    <div class="stat-card fade-in delay-2">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">MVP/игра</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Запросы на игру -->
+            <div class="requests-container">
+                <div class="section-title">
+                    <i class="fas fa-bell"></i>
+                    <h2>Запросы на игру</h2>
+                </div>
+                
+                <div class="request-list">
+                    <div class="request-card fade-in delay-1">
+                        <div class="request-avatar">
+                            <i class="fas fa-meteor"></i>
+                        </div>
+                        <div class="request-info">
+                            <div class="request-name">DragonSlayer</div>
+                            <div class="request-rank">Мифическая Слава II</div>
+                        </div>
+                        <div class="request-actions">
+                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
+                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div class="request-card fade-in delay-2">
+                        <div class="request-avatar">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="request-info">
+                            <div class="request-name">IronTank</div>
+                            <div class="request-rank">Легенда I</div>
+                        </div>
+                        <div class="request-actions">
+                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
+                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div class="request-card fade-in delay-3">
+                        <div class="request-avatar">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="request-info">
+                            <div class="request-name">SwiftAssassin</div>
+                            <div class="request-rank">Мифическая Слава V</div>
+                        </div>
+                        <div class="request-actions">
+                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
+                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Экран поиска -->
+        <div class="screen" id="search-screen">
+            <div class="section-title">
+                <i class="fas fa-search"></i>
+                <h2>Поиск тиммейтов</h2>
+            </div>
+            
+            <div class="search-filters">
+                <div class="filter-group">
+                    <label class="filter-label">Ранг</label>
+                    <select class="filter-select" id="rank-filter">
+                        <option>Любой ранг</option>
+                        <option>Воин</option>
+                        <option>Элита</option>
+                        <option>Мастер</option>
+                        <option>Эпик</option>
+                        <option>Легенда</option>
+                        <option>Мифическая Слава</option>
+                        <option>Мифическая Честь</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Основная роль</label>
+                    <select class="filter-select" id="role-filter">
+                        <option>Любая роль</option>
+                        <option>Tank (Танк)</option>
+                        <option>Fighter (Боец)</option>
+                        <option>Assassin (Убийца)</option>
+                        <option>Mage (Маг)</option>
+                        <option>Marksman (Стрелок)</option>
+                        <option>Support (Поддержка)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Win Rate (мин.)</label>
+                    <select class="filter-select" id="winrate-filter">
+                        <option>Любой</option>
+                        <option>50%+</option>
+                        <option>55%+</option>
+                        <option>60%+</option>
+                        <option>65%+</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="save-btn" onclick="performSearch()">
+                <i class="fas fa-search"></i> Найти тиммейтов
+            </button>
+            
+            <div class="search-results" id="search-results">
+                <!-- Результаты поиска будут здесь -->
+            </div>
+        </div>
+        
+        <!-- Экран редактирования профиля -->
+        <div class="screen" id="profile-screen">
+            <div class="section-title">
+                <i class="fas fa-user-edit"></i>
+                <h2>Редактирование профиля</h2>
+            </div>
+            
+            <div class="profile-form">
+                <div class="form-group">
+                    <label class="form-label">Игровой никнейм</label>
+                    <input type="text" class="form-input" id="player-name" value="ShadowHunter">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Текущий ранг</label>
+                    <select class="form-input" id="player-rank">
+                        <option>Воин</option>
+                        <option>Элита</option>
+                        <option>Мастер</option>
+                        <option>Эпик</option>
+                        <option>Легенда</option>
+                        <option selected>Мифическая Слава</option>
+                        <option>Мифическая Честь</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Основная роль</label>
+                    <select class="form-input" id="player-role">
+                        <option>Tank (Танк)</option>
+                        <option>Fighter (Боец)</option>
+                        <option>Assassin (Убийца)</option>
+                        <option selected>Mage (Маг)</option>
+                        <option>Marksman (Стрелок)</option>
+                        <option>Support (Поддержка)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ID в игре</label>
+                    <input type="text" class="form-input" id="player-id" value="123456789">
+                </div>
+                
+                <button class="save-btn" onclick="saveProfile()">
+                    <i class="fas fa-save"></i> Сохранить изменения
+                </button>
+            </div>
+        </div>
+
+        <!-- Нижнее меню -->
+        <div class="bottom-menu">
+            <div class="menu-item active" data-screen="main-screen">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </div>
+            <div class="menu-item" data-screen="history-screen">
+                <i class="fas fa-history"></i>
+                <span>История</span>
+            </div>
+            <div class="search-btn" id="searchBtn">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="menu-item" data-screen="messages-screen">
+                <i class="fas fa-comments"></i>
+                <span>Сообщения</span>
+            </div>
+            <div class="menu-item" data-screen="settings-screen">
+                <i class="fas fa-cog"></i>
+                <span>Настройки</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h2>Инструкция по запуску в Telegram</h2>
+        <ol>
+            <li>Сохраните этот код как HTML-файл</li>
+            <li>Разместите его на веб-сервере с HTTPS</li>
+            <li>Создайте бота через @BotFather</li>
+            <li>Настройте Web App в меню бота</li>
+            <li>Укажите URL вашего приложения</li>
+            <li>Добавьте кнопку меню в вашего бота</li>
+        </ol>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        
+        // Элементы интерфейса
+        const backButton = document.getElementById('backButton');
+        const editProfileBtn = document.getElementById('editProfileBtn');
+        const searchBtn = document.getElementById('searchBtn');
+        const menuItems = document.querySelectorAll('.menu-item');
+        const screens = document.querySelectorAll('.screen');
+        
+        // Инициализация приложения
+        function initApp() {
+            // Настройка интерфейса Telegram
+            tg.expand();
+            tg.enableClosingConfirmation();
+            tg.BackButton.onClick(goBack);
+            
+            // Загрузка данных пользователя
+            loadUserData();
+            
+            // Настройка обработчиков событий
+            setupEventListeners();
+            
+            // Анимация загрузки
+            animateElements();
+        }
+        
+        // Загрузка данных пользователя из Telegram
+        function loadUserData() {
+            const user = tg.initDataUnsafe.user;
+            const userNameEl = document.getElementById('user-name');
+            const userAvatarEl = document.getElementById('user-avatar');
+            
+            if (user) {
+                userNameEl.textContent = `${user.first_name} ${user.last_name || ''}`;
+                
+                if (user.photo_url) {
+                    userAvatarEl.innerHTML = `<img src="${user.photo_url}" alt="User Avatar">`;
+                }
+            } else {
+                userNameEl.textContent = "Telegram User";
+            }
+        }
+        
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            // Кнопка редактирования профиля
+            editProfileBtn.addEventListener('click', () => {
+                showScreen('profile-screen');
+            });
+            
+            // Кнопка поиска
+            searchBtn.addEventListener('click', () => {
+                showScreen('search-screen');
+            });
+            
+            // Пункты меню
+            menuItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const screenId = item.getAttribute('data-screen');
+                    if (screenId) {
+                        showScreen(screenId);
+                    }
+                });
+            });
+        }
+        
+        // Переключение экранов
+        function showScreen(screenId) {
+            // Скрыть все экраны
+            screens.forEach(screen => {
+                screen.style.display = 'none';
+            });
+            
+            // Показать выбранный экран
+            document.getElementById(screenId).style.display = 'block';
+            
+            // Показать кнопку "Назад", если это не главный экран
+            if (screenId !== 'main-screen') {
+                backButton.style.display = 'block';
+                tg.BackButton.show();
+            } else {
+                backButton.style.display = 'none';
+                tg.BackButton.hide();
+            }
+            
+            // Обновить активный пункт меню
+            menuItems.forEach(item => {
+                if (item.getAttribute('data-screen') === screenId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+        
+        // Возврат на предыдущий экран
+        function goBack() {
+            showScreen('main-screen');
+        }
+        
+        // Анимация элементов
+        function animateElements() {
+            const animatedItems = document.querySelectorAll('.fade-in');
+            animatedItems.forEach(item => {
+                item.style.opacity = 0;
+            });
+            
+            setTimeout(() => {
+                animatedItems.forEach(item => {
+                    item.style.opacity = 1;
+                });
+            }, 100);
+        }
+        
+        // Обработка принятия запроса
+        function acceptRequest(btn) {
+            const card = btn.closest('.request-card');
+            card.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+            card.style.transform = 'scale(0.95)';
+            
+            // Отправить событие в Telegram
+            tg.HapticFeedback.impactOccurred('medium');
+            
+            setTimeout(() => {
+                card.style.display = 'none';
+                tg.showAlert('Вы приняли запрос на игру! Теперь можете начать матч вместе.');
+            }, 300);
+        }
+        
+        // Обработка отклонения запроса
+        function declineRequest(btn) {
+            const card = btn.closest('.request-card');
+            card.style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
+            card.style.transform = 'scale(0.95)';
+            
+            // Отправить событие в Telegram
+            tg.HapticFeedback.impactOccurred('light');
+            
+            setTimeout(() => {
+                card.style.display = 'none';
+            }, 300);
+        }
+        
+        // Поиск тиммейтов
+        function performSearch() {
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+            
+            // Имитация загрузки
+            resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px;">Идет поиск тиммейтов...</div>';
+            
+            // Имитация результатов поиска
+            setTimeout(() => {
+                const mockResults = [
+                    { name: "ProPlayer", rank: "Мифическая Честь", role: "Mage" },
+                    { name: "TankMaster", rank: "Мифическая Слава I", role: "Tank" },
+                    { name: "SniperWolf", rank: "Мифическая Слава III", role: "Marksman" },
+                    { name: "FastKiller", rank: "Легенда I", role: "Assassin" }
+                ];
+                
+                let html = '';
+                mockResults.forEach(player => {
+                    html += `
+                    <div class="search-result-card fade-in">
+                        <div class="request-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="request-info">
+                            <div class="request-name">${player.name}</div>
+                            <div class="request-rank">${player.rank} | ${player.role}</div>
+                        </div>
+                        <button class="request-btn">Пригласить</button>
+                    </div>
+                    `;
+                });
+                
+                resultsContainer.innerHTML = html;
+                
+                // Анимация
+                const resultCards = document.querySelectorAll('.search-result-card');
+                resultCards.forEach((card, index) => {
+                    card.style.animationDelay = `${0.1 * index}s`;
+                });
+                
+            }, 1500);
+        }
+        
+        // Сохранение профиля
+        function saveProfile() {
+            const playerName = document.getElementById('player-name').value;
+            document.getElementById('user-name').textContent = playerName;
+            
+            // Отправить событие в Telegram
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert('Профиль успешно обновлен!');
+            
+            // Вернуться на главный экран
+            showScreen('main-screen');
+        }
+        
+        // Инициализация приложения при загрузке
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

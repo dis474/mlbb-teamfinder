@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB TeamFinder - Telegram Mini App</title>
+    <title>MLBB TeamFinder - Автоматический подбор</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,6 +19,8 @@
             --accent: #e74c3c;
             --success: #2ecc71;
             --warning: #f39c12;
+            --online: #2ecc71;
+            --offline: #e74c3c;
         }
 
         * {
@@ -141,12 +143,31 @@
             justify-content: center;
             font-size: 30px;
             overflow: hidden;
+            position: relative;
         }
 
         .player-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+
+        .online-status {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid var(--tg-theme-secondary-bg-color);
+        }
+
+        .online {
+            background-color: var(--online);
+        }
+
+        .offline {
+            background-color: var(--offline);
         }
 
         .player-details {
@@ -157,6 +178,9 @@
             font-size: 22px;
             font-weight: bold;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .player-rank {
@@ -230,6 +254,7 @@
             justify-content: center;
             font-size: 20px;
             overflow: hidden;
+            position: relative;
         }
 
         .request-avatar img {
@@ -245,6 +270,9 @@
         .request-name {
             font-weight: bold;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .request-rank {
@@ -401,6 +429,7 @@
         
         .filter-group {
             margin-bottom: 15px;
+            position: relative;
         }
         
         .filter-label {
@@ -449,11 +478,25 @@
             transform: scale(1.05);
         }
         
-        /* Экран профиля */
-        .profile-form {
+        /* Экран регистрации */
+        .registration-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .registration-form {
             background: rgba(35, 46, 60, 0.7);
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .form-title {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--primary);
+            font-size: 24px;
         }
         
         .form-group {
@@ -476,6 +519,27 @@
             font-size: 16px;
         }
         
+        .id-input-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .id-input {
+            flex: 1;
+        }
+        
+        .load-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
         .save-btn {
             background: var(--tg-theme-button-color);
             color: var(--tg-theme-button-text-color);
@@ -487,36 +551,41 @@
             width: 100%;
             font-size: 16px;
             transition: all 0.3s;
+            margin-top: 15px;
         }
         
-        .save-btn:hover {
+        .save-btn:hover, .load-btn:hover {
             opacity: 0.9;
             transform: scale(1.02);
         }
         
-        .instructions {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px auto;
-            max-width: 500px;
+        .no-requests {
             text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color);
         }
         
-        .instructions h2 {
-            color: var(--primary);
-            margin-bottom: 15px;
+        .online-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--online);
+            margin-right: 5px;
         }
         
-        .instructions ol {
-            text-align: left;
-            padding-left: 20px;
-            margin-bottom: 15px;
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
         }
         
-        .instructions li {
-            margin-bottom: 10px;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         @media (max-width: 480px) {
@@ -531,6 +600,18 @@
             
             .stat-value {
                 font-size: 20px;
+            }
+            
+            .registration-form {
+                padding: 20px;
+            }
+            
+            .id-input-container {
+                flex-direction: column;
+            }
+            
+            .load-btn {
+                width: 100%;
             }
         }
     </style>
@@ -553,35 +634,96 @@
             </div>
         </div>
 
+        <!-- Экран регистрации -->
+        <div class="screen" id="registration-screen">
+            <div class="registration-container">
+                <div class="registration-form">
+                    <div class="form-title">Регистрация игрока</div>
+                    <div class="form-group">
+                        <label class="form-label">Игровой ID (из Mobile Legends)</label>
+                        <div class="id-input-container">
+                            <input type="text" class="form-input id-input" id="player-id" placeholder="Введите ваш игровой ID">
+                            <button class="load-btn" onclick="loadPlayerDataByID()">
+                                <span id="load-btn-text">Загрузить данные</span>
+                                <span id="load-btn-spinner" class="loading" style="display: none;"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Никнейм в игре</label>
+                        <input type="text" class="form-input" id="player-nickname" placeholder="Ваш игровой никнейм" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Текущий ранг</label>
+                        <select class="form-input" id="player-rank" disabled>
+                            <option value="">Выберите ваш ранг</option>
+                            <option>Воин</option>
+                            <option>Элита</option>
+                            <option>Мастер</option>
+                            <option>Эпик</option>
+                            <option>Легенда</option>
+                            <option>Мифическая Слава</option>
+                            <option>Мифическая Честь</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Основная роль</label>
+                        <select class="form-input" id="player-role" disabled>
+                            <option value="">Выберите вашу роль</option>
+                            <option>Tank (Танк)</option>
+                            <option>Fighter (Боец)</option>
+                            <option>Assassin (Убийца)</option>
+                            <option>Mage (Маг)</option>
+                            <option>Marksman (Стрелок)</option>
+                            <option>Support (Поддержка)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Win Rate (%)</label>
+                        <input type="number" class="form-input" id="player-winrate" min="0" max="100" placeholder="Ваш текущий Win Rate" readonly>
+                    </div>
+                    
+                    <button class="save-btn" id="register-btn" disabled>
+                        <i class="fas fa-user-plus"></i> Зарегистрироваться
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Основной экран -->
         <div class="screen" id="main-screen">
             <!-- Статистика игрока -->
             <div class="player-stats fade-in">
                 <div class="player-info">
                     <div class="player-avatar" id="user-avatar">
-                        <i class="fas fa-crown"></i>
+                        <i class="fas fa-user"></i>
+                        <div class="online-status online" id="user-online-status"></div>
                     </div>
                     <div class="player-details">
-                        <div class="player-name" id="user-name">Загрузка...</div>
-                        <div class="player-rank">Мифическая Слава III</div>
+                        <div class="player-name" id="user-name">Игрок не зарегистрирован</div>
+                        <div class="player-rank" id="user-rank">Ранг не указан</div>
                     </div>
                 </div>
                 
                 <div class="stats-grid">
                     <div class="stat-card fade-in delay-1">
-                        <div class="stat-value">64%</div>
+                        <div class="stat-value" id="user-winrate">0%</div>
                         <div class="stat-label">Win Rate</div>
                     </div>
                     <div class="stat-card fade-in delay-2">
-                        <div class="stat-value">1,872</div>
+                        <div class="stat-value" id="user-matches">0</div>
                         <div class="stat-label">Матчи</div>
                     </div>
                     <div class="stat-card fade-in delay-1">
-                        <div class="stat-value">7.8</div>
+                        <div class="stat-value" id="user-kda">0.0</div>
                         <div class="stat-label">KDA</div>
                     </div>
                     <div class="stat-card fade-in delay-2">
-                        <div class="stat-value">3</div>
+                        <div class="stat-value" id="user-mvp">0</div>
                         <div class="stat-label">MVP/игра</div>
                     </div>
                 </div>
@@ -594,47 +736,11 @@
                     <h2>Запросы на игру</h2>
                 </div>
                 
-                <div class="request-list">
-                    <div class="request-card fade-in delay-1">
-                        <div class="request-avatar">
-                            <i class="fas fa-meteor"></i>
-                        </div>
-                        <div class="request-info">
-                            <div class="request-name">DragonSlayer</div>
-                            <div class="request-rank">Мифическая Слава II</div>
-                        </div>
-                        <div class="request-actions">
-                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
-                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
-                        </div>
-                    </div>
-                    
-                    <div class="request-card fade-in delay-2">
-                        <div class="request-avatar">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="request-info">
-                            <div class="request-name">IronTank</div>
-                            <div class="request-rank">Легенда I</div>
-                        </div>
-                        <div class="request-actions">
-                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
-                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
-                        </div>
-                    </div>
-                    
-                    <div class="request-card fade-in delay-3">
-                        <div class="request-avatar">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <div class="request-info">
-                            <div class="request-name">SwiftAssassin</div>
-                            <div class="request-rank">Мифическая Слава V</div>
-                        </div>
-                        <div class="request-actions">
-                            <div class="accept-btn" onclick="acceptRequest(this)"><i class="fas fa-check"></i></div>
-                            <div class="decline-btn" onclick="declineRequest(this)"><i class="fas fa-times"></i></div>
-                        </div>
+                <div class="request-list" id="request-list">
+                    <div class="no-requests">
+                        <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 15px;"></i>
+                        <p>У вас пока нет запросов на игру</p>
+                        <p>Начните поиск тиммейтов, чтобы получить запросы!</p>
                     </div>
                 </div>
             </div>
@@ -703,40 +809,45 @@
                 <h2>Редактирование профиля</h2>
             </div>
             
-            <div class="profile-form">
+            <div class="registration-form">
                 <div class="form-group">
-                    <label class="form-label">Игровой никнейм</label>
-                    <input type="text" class="form-input" id="player-name" value="ShadowHunter">
+                    <label class="form-label">Игровой ID (из Mobile Legends)</label>
+                    <input type="text" class="form-input" id="edit-player-id" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Никнейм в игре</label>
+                    <input type="text" class="form-input" id="edit-player-nickname">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Текущий ранг</label>
-                    <select class="form-input" id="player-rank">
+                    <select class="form-input" id="edit-player-rank">
                         <option>Воин</option>
                         <option>Элита</option>
                         <option>Мастер</option>
                         <option>Эпик</option>
                         <option>Легенда</option>
-                        <option selected>Мифическая Слава</option>
+                        <option>Мифическая Слава</option>
                         <option>Мифическая Честь</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Основная роль</label>
-                    <select class="form-input" id="player-role">
+                    <select class="form-input" id="edit-player-role">
                         <option>Tank (Танк)</option>
                         <option>Fighter (Боец)</option>
                         <option>Assassin (Убийца)</option>
-                        <option selected>Mage (Маг)</option>
+                        <option>Mage (Маг)</option>
                         <option>Marksman (Стрелок)</option>
                         <option>Support (Поддержка)</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">ID в игре</label>
-                    <input type="text" class="form-input" id="player-id" value="123456789">
+                    <label class="form-label">Win Rate (%)</label>
+                    <input type="number" class="form-input" id="edit-player-winrate" min="0" max="100">
                 </div>
                 
                 <button class="save-btn" onclick="saveProfile()">
@@ -768,18 +879,6 @@
             </div>
         </div>
     </div>
-    
-    <div class="instructions">
-        <h2>Инструкция по запуску в Telegram</h2>
-        <ol>
-            <li>Сохраните этот код как HTML-файл</li>
-            <li>Разместите его на веб-сервере с HTTPS</li>
-            <li>Создайте бота через @BotFather</li>
-            <li>Настройте Web App в меню бота</li>
-            <li>Укажите URL вашего приложения</li>
-            <li>Добавьте кнопку меню в вашего бота</li>
-        </ol>
-    </div>
 
     <script>
         // Инициализация Telegram Web App
@@ -792,38 +891,288 @@
         const menuItems = document.querySelectorAll('.menu-item');
         const screens = document.querySelectorAll('.screen');
         
+        // База данных игроков (имитация API)
+        const playerDatabase = {
+            // Примеры игроков с разными ID
+            "123456789": {
+                nickname: "ShadowHunter",
+                rank: "Мифическая Слава III",
+                role: "Mage",
+                winrate: "64",
+                matches: "1872",
+                kda: "7.8",
+                mvp: "3"
+            },
+            "987654321": {
+                nickname: "DragonSlayer",
+                rank: "Мифическая Слава II",
+                role: "Fighter",
+                winrate: "58",
+                matches: "2105",
+                kda: "6.2",
+                mvp: "2"
+            },
+            "456789123": {
+                nickname: "IronTank",
+                rank: "Легенда I",
+                role: "Tank",
+                winrate: "52",
+                matches: "1560",
+                kda: "5.1",
+                mvp: "1"
+            },
+            "789123456": {
+                nickname: "SwiftAssassin",
+                rank: "Мифическая Слава V",
+                role: "Assassin",
+                winrate: "61",
+                matches: "1920",
+                kda: "8.3",
+                mvp: "4"
+            },
+            "321654987": {
+                nickname: "SniperWolf",
+                rank: "Мифическая Слава III",
+                role: "Marksman",
+                winrate: "67",
+                matches: "1785",
+                kda: "7.2",
+                mvp: "3"
+            }
+        };
+        
+        // База данных приложения (localStorage)
+        const database = {
+            players: [],
+            requests: [],
+            
+            // Инициализация данных
+            init: function() {
+                // Загрузка данных из localStorage
+                const savedPlayers = localStorage.getItem('mlbb_players');
+                const savedRequests = localStorage.getItem('mlbb_requests');
+                
+                if (savedPlayers) this.players = JSON.parse(savedPlayers);
+                if (savedRequests) this.requests = JSON.parse(savedRequests);
+            },
+            
+            // Сохранение данных
+            save: function() {
+                localStorage.setItem('mlbb_players', JSON.stringify(this.players));
+                localStorage.setItem('mlbb_requests', JSON.stringify(this.requests));
+            },
+            
+            // Добавление игрока
+            addPlayer: function(player) {
+                // Проверка на существующего игрока
+                const existingPlayer = this.players.find(p => p.id === player.id);
+                if (existingPlayer) {
+                    // Обновление данных
+                    Object.assign(existingPlayer, player);
+                } else {
+                    // Добавление нового игрока
+                    this.players.push(player);
+                }
+                this.save();
+            },
+            
+            // Поиск игрока по ID
+            getPlayerById: function(id) {
+                return this.players.find(p => p.id === id);
+            },
+            
+            // Добавление запроса
+            addRequest: function(fromId, toId) {
+                const request = {
+                    id: Date.now().toString(),
+                    from: fromId,
+                    to: toId,
+                    status: 'pending',
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.requests.push(request);
+                this.save();
+                return request;
+            },
+            
+            // Получение запросов для игрока
+            getRequestsForPlayer: function(playerId) {
+                return this.requests.filter(r => r.to === playerId && r.status === 'pending');
+            },
+            
+            // Обновление статуса запроса
+            updateRequestStatus: function(requestId, status) {
+                const request = this.requests.find(r => r.id === requestId);
+                if (request) {
+                    request.status = status;
+                    this.save();
+                }
+            },
+            
+            // Получение онлайн-игроков
+            getOnlinePlayers: function() {
+                return this.players.filter(p => p.online);
+            },
+            
+            // Обновление онлайн-статуса игрока
+            updatePlayerOnlineStatus: function(playerId, isOnline) {
+                const player = this.getPlayerById(playerId);
+                if (player) {
+                    player.online = isOnline;
+                    this.save();
+                }
+            }
+        };
+        
         // Инициализация приложения
         function initApp() {
+            // Инициализация базы данных
+            database.init();
+            
             // Настройка интерфейса Telegram
             tg.expand();
             tg.enableClosingConfirmation();
             tg.BackButton.onClick(goBack);
             
-            // Загрузка данных пользователя
-            loadUserData();
+            // Проверка регистрации
+            const currentPlayer = getCurrentPlayer();
+            if (!currentPlayer) {
+                showScreen('registration-screen');
+            } else {
+                // Обновляем статус онлайн при входе
+                database.updatePlayerOnlineStatus(currentPlayer.id, true);
+                loadPlayerData(currentPlayer);
+                loadPlayerRequests(currentPlayer.id);
+                showScreen('main-screen');
+            }
             
             // Настройка обработчиков событий
             setupEventListeners();
             
-            // Анимация загрузки
-            animateElements();
+            // Обновление онлайн-статуса при закрытии приложения
+            window.addEventListener('beforeunload', function() {
+                if (currentPlayer) {
+                    database.updatePlayerOnlineStatus(currentPlayer.id, false);
+                }
+            });
         }
         
-        // Загрузка данных пользователя из Telegram
-        function loadUserData() {
-            const user = tg.initDataUnsafe.user;
-            const userNameEl = document.getElementById('user-name');
-            const userAvatarEl = document.getElementById('user-avatar');
+        // Получение текущего игрока
+        function getCurrentPlayer() {
+            // Для демо используем первого игрока
+            return database.players.length > 0 ? database.players[0] : null;
+        }
+        
+        // Загрузка данных игрока
+        function loadPlayerData(player) {
+            document.getElementById('user-name').textContent = player.nickname;
+            document.getElementById('user-rank').textContent = player.rank;
+            document.getElementById('user-winrate').textContent = player.winrate + '%';
+            document.getElementById('user-matches').textContent = player.matches || '0';
+            document.getElementById('user-kda').textContent = player.kda || '0.0';
+            document.getElementById('user-mvp').textContent = player.mvp || '0';
             
-            if (user) {
-                userNameEl.textContent = `${user.first_name} ${user.last_name || ''}`;
-                
-                if (user.photo_url) {
-                    userAvatarEl.innerHTML = `<img src="${user.photo_url}" alt="User Avatar">`;
-                }
-            } else {
-                userNameEl.textContent = "Telegram User";
+            // Обновление статуса онлайн
+            const onlineStatus = document.getElementById('user-online-status');
+            onlineStatus.className = player.online ? 'online-status online' : 'online-status offline';
+            
+            // Заполнение формы редактирования
+            document.getElementById('edit-player-id').value = player.id;
+            document.getElementById('edit-player-nickname').value = player.nickname;
+            document.getElementById('edit-player-rank').value = player.rank;
+            document.getElementById('edit-player-role').value = player.role;
+            document.getElementById('edit-player-winrate').value = player.winrate;
+        }
+        
+        // Загрузка запросов игрока
+        function loadPlayerRequests(playerId) {
+            const requests = database.getRequestsForPlayer(playerId);
+            const requestList = document.getElementById('request-list');
+            
+            if (requests.length === 0) {
+                requestList.innerHTML = `
+                    <div class="no-requests">
+                        <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 15px;"></i>
+                        <p>У вас пока нет запросов на игру</p>
+                        <p>Начните поиск тиммейтов, чтобы получить запросы!</p>
+                    </div>
+                `;
+                return;
             }
+            
+            let html = '';
+            requests.forEach(request => {
+                const player = database.getPlayerById(request.from);
+                if (player) {
+                    html += `
+                    <div class="request-card fade-in">
+                        <div class="request-avatar">
+                            <i class="fas fa-user"></i>
+                            <div class="online-status ${player.online ? 'online' : 'offline'}"></div>
+                        </div>
+                        <div class="request-info">
+                            <div class="request-name">
+                                ${player.nickname}
+                                ${player.online ? '<span class="online-indicator"></span>Онлайн' : ''}
+                            </div>
+                            <div class="request-rank">${player.rank} | ${player.role}</div>
+                        </div>
+                        <div class="request-actions">
+                            <div class="accept-btn" onclick="acceptRequest('${request.id}')"><i class="fas fa-check"></i></div>
+                            <div class="decline-btn" onclick="declineRequest('${request.id}')"><i class="fas fa-times"></i></div>
+                        </div>
+                    </div>
+                    `;
+                }
+            });
+            
+            requestList.innerHTML = html;
+        }
+        
+        // Загрузка данных игрока по ID (имитация API)
+        function loadPlayerDataByID() {
+            const playerId = document.getElementById('player-id').value;
+            const loadBtnText = document.getElementById('load-btn-text');
+            const loadBtnSpinner = document.getElementById('load-btn-spinner');
+            
+            if (!playerId) {
+                tg.showAlert('Пожалуйста, введите игровой ID');
+                return;
+            }
+            
+            // Показать индикатор загрузки
+            loadBtnText.style.display = 'none';
+            loadBtnSpinner.style.display = 'inline-block';
+            
+            // Имитация запроса к API
+            setTimeout(() => {
+                // Скрыть индикатор загрузки
+                loadBtnText.style.display = 'inline-block';
+                loadBtnSpinner.style.display = 'none';
+                
+                const playerData = playerDatabase[playerId];
+                if (playerData) {
+                    // Заполнение формы данными
+                    document.getElementById('player-nickname').value = playerData.nickname;
+                    document.getElementById('player-rank').value = playerData.rank;
+                    document.getElementById('player-role').value = playerData.role;
+                    document.getElementById('player-winrate').value = playerData.winrate;
+                    
+                    // Активируем кнопку регистрации
+                    document.getElementById('register-btn').disabled = false;
+                    
+                    // Разблокируем поля
+                    document.getElementById('player-nickname').readOnly = false;
+                    document.getElementById('player-rank').disabled = false;
+                    document.getElementById('player-role').disabled = false;
+                    document.getElementById('player-winrate').readOnly = false;
+                    
+                    tg.showAlert('Данные игрока успешно загружены!');
+                } else {
+                    tg.showAlert('Игрок с таким ID не найден');
+                }
+            }, 1500);
         }
         
         // Настройка обработчиков событий
@@ -883,50 +1232,60 @@
             showScreen('main-screen');
         }
         
-        // Анимация элементов
-        function animateElements() {
-            const animatedItems = document.querySelectorAll('.fade-in');
-            animatedItems.forEach(item => {
-                item.style.opacity = 0;
-            });
+        // Регистрация игрока
+        function registerPlayer() {
+            const playerId = document.getElementById('player-id').value;
+            const nickname = document.getElementById('player-nickname').value;
+            const rank = document.getElementById('player-rank').value;
+            const role = document.getElementById('player-role').value;
+            const winrate = document.getElementById('player-winrate').value;
             
-            setTimeout(() => {
-                animatedItems.forEach(item => {
-                    item.style.opacity = 1;
-                });
-            }, 100);
+            if (!playerId || !nickname || !rank || !role || !winrate) {
+                tg.showAlert('Пожалуйста, заполните все поля!');
+                return;
+            }
+            
+            const player = {
+                id: playerId,
+                nickname: nickname,
+                rank: rank,
+                role: role,
+                winrate: winrate,
+                online: true,
+                matches: Math.floor(Math.random() * 2000) + 500,
+                kda: (Math.random() * 10).toFixed(1),
+                mvp: Math.floor(Math.random() * 5) + 1
+            };
+            
+            database.addPlayer(player);
+            loadPlayerData(player);
+            loadPlayerRequests(player.id);
+            showScreen('main-screen');
+            tg.showAlert('Регистрация прошла успешно!');
         }
         
-        // Обработка принятия запроса
-        function acceptRequest(btn) {
-            const card = btn.closest('.request-card');
-            card.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
-            card.style.transform = 'scale(0.95)';
+        // Сохранение профиля
+        function saveProfile() {
+            const playerId = document.getElementById('edit-player-id').value;
+            const nickname = document.getElementById('edit-player-nickname').value;
+            const rank = document.getElementById('edit-player-rank').value;
+            const role = document.getElementById('edit-player-role').value;
+            const winrate = document.getElementById('edit-player-winrate').value;
             
-            // Отправить событие в Telegram
-            tg.HapticFeedback.impactOccurred('medium');
-            
-            setTimeout(() => {
-                card.style.display = 'none';
-                tg.showAlert('Вы приняли запрос на игру! Теперь можете начать матч вместе.');
-            }, 300);
+            const player = database.getPlayerById(playerId);
+            if (player) {
+                player.nickname = nickname;
+                player.rank = rank;
+                player.role = role;
+                player.winrate = winrate;
+                database.save();
+                loadPlayerData(player);
+                tg.showAlert('Профиль успешно обновлен!');
+                showScreen('main-screen');
+            }
         }
         
-        // Обработка отклонения запроса
-        function declineRequest(btn) {
-            const card = btn.closest('.request-card');
-            card.style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
-            card.style.transform = 'scale(0.95)';
-            
-            // Отправить событие в Telegram
-            tg.HapticFeedback.impactOccurred('light');
-            
-            setTimeout(() => {
-                card.style.display = 'none';
-            }, 300);
-        }
-        
-        // Поиск тиммейтов
+        // Поиск тиммейтов (только онлайн-игроки)
         function performSearch() {
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '';
@@ -934,53 +1293,86 @@
             // Имитация загрузки
             resultsContainer.innerHTML = '<div style="text-align: center; padding: 20px;">Идет поиск тиммейтов...</div>';
             
-            // Имитация результатов поиска
+            // Получение только онлайн-игроков
+            const onlinePlayers = database.getOnlinePlayers();
+            
+            // Фильтрация по текущему игроку (чтобы не показывать самого себя)
+            const currentPlayer = getCurrentPlayer();
+            const filteredPlayers = onlinePlayers.filter(p => p.id !== currentPlayer.id);
+            
+            // Отображение результатов
             setTimeout(() => {
-                const mockResults = [
-                    { name: "ProPlayer", rank: "Мифическая Честь", role: "Mage" },
-                    { name: "TankMaster", rank: "Мифическая Слава I", role: "Tank" },
-                    { name: "SniperWolf", rank: "Мифическая Слава III", role: "Marksman" },
-                    { name: "FastKiller", rank: "Легенда I", role: "Assassin" }
-                ];
+                if (filteredPlayers.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="no-requests">
+                            <i class="fas fa-user-slash" style="font-size: 40px; margin-bottom: 15px;"></i>
+                            <p>Онлайн-игроки не найдены</p>
+                            <p>Попробуйте изменить параметры поиска</p>
+                        </div>
+                    `;
+                    return;
+                }
                 
                 let html = '';
-                mockResults.forEach(player => {
+                filteredPlayers.forEach(player => {
                     html += `
                     <div class="search-result-card fade-in">
                         <div class="request-avatar">
                             <i class="fas fa-user"></i>
+                            <div class="online-status online"></div>
                         </div>
                         <div class="request-info">
-                            <div class="request-name">${player.name}</div>
-                            <div class="request-rank">${player.rank} | ${player.role}</div>
+                            <div class="request-name">
+                                ${player.nickname}
+                                <span class="online-indicator"></span>Онлайн
+                            </div>
+                            <div class="request-rank">${player.rank} | ${player.role} | WR: ${player.winrate}%</div>
                         </div>
-                        <button class="request-btn">Пригласить</button>
+                        <button class="request-btn" onclick="sendGameRequest('${player.id}')">Пригласить</button>
                     </div>
                     `;
                 });
                 
                 resultsContainer.innerHTML = html;
-                
-                // Анимация
-                const resultCards = document.querySelectorAll('.search-result-card');
-                resultCards.forEach((card, index) => {
-                    card.style.animationDelay = `${0.1 * index}s`;
-                });
-                
-            }, 1500);
+            }, 1000);
         }
         
-        // Сохранение профиля
-        function saveProfile() {
-            const playerName = document.getElementById('player-name').value;
-            document.getElementById('user-name').textContent = playerName;
+        // Отправка запроса на игру
+        function sendGameRequest(playerId) {
+            const currentPlayer = getCurrentPlayer();
+            if (!currentPlayer) {
+                tg.showAlert('Пожалуйста, сначала зарегистрируйтесь!');
+                return;
+            }
             
-            // Отправить событие в Telegram
-            tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert('Профиль успешно обновлен!');
+            database.addRequest(currentPlayer.id, playerId);
+            tg.showAlert('Запрос на игру отправлен!');
+        }
+        
+        // Принятие запроса
+        function acceptRequest(requestId) {
+            database.updateRequestStatus(requestId, 'accepted');
             
-            // Вернуться на главный экран
-            showScreen('main-screen');
+            // Обновляем список запросов
+            const currentPlayer = getCurrentPlayer();
+            if (currentPlayer) {
+                loadPlayerRequests(currentPlayer.id);
+            }
+            
+            tg.showAlert('Вы приняли запрос на игру! Теперь можете начать матч вместе.');
+        }
+        
+        // Отклонение запроса
+        function declineRequest(requestId) {
+            database.updateRequestStatus(requestId, 'declined');
+            
+            // Обновляем список запросов
+            const currentPlayer = getCurrentPlayer();
+            if (currentPlayer) {
+                loadPlayerRequests(currentPlayer.id);
+            }
+            
+            tg.showAlert('Запрос на игру отклонен.');
         }
         
         // Инициализация приложения при загрузке
